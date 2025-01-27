@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ICD-10 Coding Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .code-item { transition: transform 0.2s; }
+        .code-item:hover { transform: translateX(5px); }
+        #totalReimbursement { font-size: 1.2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <h1 class="mb-4 text-primary">Clinical Coding Assistant</h1>
+        
+        <div class="mb-4">
+            <textarea id="clinicalNote" class="form-control" rows="5" 
+                placeholder="Enter clinical note (e.g., 'Patient presents with chest pain and shortness of breath')"></textarea>
+            <button onclick="analyzeNote()" class="btn btn-primary mt-3">Generate Codes</button>
+        </div>
+
+        <div id="results" class="list-group mb-4"></div>
+        <div id="total" class="alert alert-success"></div>
+
+        <div class="alert alert-warning small">
+            Proof-of-concept demonstration only. Verify codes with certified professionals.
+        </div>
+    </div>
+
+<script>
+const icd10Codes = [
+    
+    {
+        code: "I10",
+        desc: "Essential hypertension",
+        keywords: ["hypertension", "high blood pressure", "htn"],
+        reimbursement: 650,
+        risk: "Low"
+    },
+    {
+        code: "E11.9",
+        desc: "Type 2 diabetes without complications",
+        keywords: ["diabetes", "dm2", "hyperglycemia"],
+        reimbursement: 850,
+        risk: "Medium"
+    },
+    {
+        code: "J45.909",
+        desc: "Unspecified asthma",
+        keywords: ["asthma", "wheezing", "sob"],
+        reimbursement: 720,
+        risk: "Medium"
+    },
+    {
+        code: "N39.0",
+        desc: "Urinary tract infection",
+        keywords: ["uti", "dysuria", "frequency"],
+        reimbursement: 600,
+        risk: "Low"
+    },
+    {
+        code: "M54.5",
+        desc: "Low back pain",
+        keywords: ["back pain", "lumbago"],
+        reimbursement: 550,
+        risk: "High"
+    },
+    {
+        code: "J20.9",
+        desc: "Acute bronchitis",
+        keywords: ["bronchitis", "cough", "sputum"],
+        reimbursement: 680,
+        risk: "Medium"
+    },
+    {
+        code: "F41.1",
+        desc: "Generalized anxiety",
+        keywords: ["anxiety", "worry", "panic"],
+        reimbursement: 900,
+        risk: "Medium"
+    },
+    {
+        code: "I25.10",
+        desc: "Coronary artery disease",
+        keywords: ["cad", "chest pain", "atherosclerosis"],
+        reimbursement: 2200,
+        risk: "Low"
+    },
+    {
+        code: "G43.909",
+        desc: "Migraine",
+        keywords: ["migraine", "headache", "aura"],
+        reimbursement: 780,
+        risk: "Medium"
+    },
+    {
+        code: "K21.9",
+        desc: "GERD",
+        keywords: ["heartburn", "reflux", "regurgitation"],
+        reimbursement: 620,
+        risk: "Low"
+    },
+    {
+        code: "J44.9",
+        desc: "COPD",
+        keywords: ["copd", "emphysema", "sob"],
+        reimbursement: 1850,
+        risk: "Medium"
+    },
+    {
+        code: "E78.5",
+        desc: "Hyperlipidemia",
+        keywords: ["high cholesterol", "ldl"],
+        reimbursement: 580,
+        risk: "Low"
+    },
+    {
+        code: "I50.9",
+        desc: "Heart failure",
+        keywords: ["chf", "edema", "jvd"],
+        reimbursement: 2100,
+        risk: "High"
+    },
+    {
+        code: "L30.9",
+        desc: "Dermatitis",
+        keywords: ["rash", "eczema", "pruritus"],
+        reimbursement: 490,
+        risk: "Medium"
+    },
+    {
+        code: "R05",
+        desc: "Cough",
+        keywords: ["cough", "productive cough"],
+        reimbursement: 350,
+        risk: "High"
+    },
+
+    // Added 15 codes for top disease states
+    {
+        code: "N18.9",
+        desc: "Chronic kidney disease",
+        keywords: ["ckd", "renal failure", "elevated creatinine"],
+        reimbursement: 2800,
+        risk: "Medium"
+    },
+    {
+        code: "G30.9",
+        desc: "Alzheimer's disease",
+        keywords: ["dementia", "memory loss", "cognitive decline"],
+        reimbursement: 3200,
+        risk: "Low"
+    },
+    {
+        code: "C34.90",
+        desc: "Lung cancer",
+        keywords: ["lung mass", "hemoptysis", "ca lung"],
+        reimbursement: 9500,
+        risk: "High"
+    },
+    {
+        code: "I63.9",
+        desc: "Cerebral infarction",
+        keywords: ["stroke", "cva", "facial droop"],
+        reimbursement: 4500,
+        risk: "Medium"
+    },
+    {
+        code: "M17.9",
+        desc: "Osteoarthritis knee",
+        keywords: ["knee pain", "crepitus", "degenerative joint disease"],
+        reimbursement: 2100,
+        risk: "Low"
+    },
+    {
+        code: "J09.X2",
+        desc: "Influenza pneumonia",
+        keywords: ["flu", "influenza", "myalgias"],
+        reimbursement: 1800,
+        risk: "High"
+    },
+    {
+        code: "K35.80",
+        desc: "Acute appendicitis",
+        keywords: ["rlq pain", "appendicitis", "rebound tenderness"],
+        reimbursement: 6200,
+        risk: "Medium"
+    },
+    {
+        code: "F32.9",
+        desc: "Major depressive disorder",
+        keywords: ["depression", "low mood", "anhedonia"],
+        reimbursement: 950,
+        risk: "Medium"
+    },
+    {
+        code: "E66.9",
+        desc: "Obesity",
+        keywords: ["obesity", "bmi 30+", "weight management"],
+        reimbursement: 450,
+        risk: "Low"
+    },
+    {
+        code: "A41.9",
+        desc: "Sepsis",
+        keywords: ["sepsis", "sirs", "lactate elevated"],
+        reimbursement: 8800,
+        risk: "High"
+    },
+    {
+        code: "R50.9",
+        desc: "Fever unspecified",
+        keywords: ["fever", "pyrexia", "elevated temp"],
+        reimbursement: 380,
+        risk: "High"
+    },
+    {
+        code: "K74.60",
+        desc: "Cirrhosis liver",
+        keywords: ["cirrhosis", "ascites", "hepatic encephalopathy"],
+        reimbursement: 5400,
+        risk: "Medium"
+    },
+    {
+        code: "C50.919",
+        desc: "Breast cancer",
+        keywords: ["breast mass", "mammogram abnormal", "biopsy malignant"],
+        reimbursement: 12700,
+        risk: "Low"
+    },
+    {
+        code: "Z23",
+        desc: "Vaccination encounter",
+        keywords: ["vaccine", "immunization", "prophylaxis"],
+        reimbursement: 150,
+        risk: "Low"
+    },
+    {
+        code: "S72.009A",
+        desc: "Femoral neck fracture",
+        keywords: ["hip fracture", "fall", "trauma"],
+        reimbursement: 13400,
+        risk: "Medium"
+    },
+    {
+        code: "B20",
+        desc: "HIV disease",
+        keywords: ["hiv", "aids", "cd4 low"],
+        reimbursement: 6800,
+        risk: "High"
+    }
+];
+
+function analyzeNote() {
+    const note = document.getElementById('clinicalNote').value.toLowerCase();
+    const resultsDiv = document.getElementById('results');
+    const totalDiv = document.getElementById('total');
+    resultsDiv.innerHTML = '';
+    totalDiv.innerHTML = '';
+
+    // Process matches
+    const validCodes = icd10Codes
+        .map(code => ({
+            ...code,
+            score: code.keywords.filter(kw => note.includes(kw.toLowerCase())).length
+        }))
+        .filter(c => c.score > 0)
+        .sort((a, b) => b.score - a.score || b.reimbursement - a.reimbursement);
+
+    // Display results
+    if (validCodes.length === 0) {
+        resultsDiv.innerHTML = `<div class="alert alert-info">No matching codes found. Add more clinical details.</div>`;
+        return;
+    }
+
+    // Calculate total reimbursement
+    const total = validCodes.reduce((sum, code) => sum + code.reimbursement, 0);
+
+    // Display codes
+    resultsDiv.innerHTML = validCodes.map(code => `
+        <div class="list-group-item code-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="mb-1">${code.code}</h5>
+                    <p class="mb-1">${code.desc}</p>
+                    <small class="text-muted">Matched terms: ${code.keywords.join(', ')}</small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-${getRiskColor(code.risk)}">${code.risk}</span>
+                    <div class="text-success mt-1">$${code.reimbursement}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Display total
+    totalDiv.innerHTML = `Total Estimated Reimbursement: $${total}`;
+}
+
+function getRiskColor(risk) {
+    return { Low: 'success', Medium: 'warning', High: 'danger' }[risk];
+}
+</script>
+</body>
+</html>
